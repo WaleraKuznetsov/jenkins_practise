@@ -1,0 +1,40 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_COMPOSE_DIR = "${WORKSPACE}"
+    }
+    
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/Bruno4Mrus/jenkins_practise.git',
+                    credentialsId: 'github-credentials'
+            }
+        }
+        
+        stage('Stop Services') {
+            steps {
+                dir(DOCKER_COMPOSE_DIR) {
+                    sh 'docker compose down'
+                }
+            }
+        }
+        
+        stage('Cleanup') {
+            steps {
+                sh 'docker system prune -f || true'
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Services stopped successfully!'
+        }
+    }
+}

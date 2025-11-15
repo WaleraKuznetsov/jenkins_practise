@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_COMPOSE_DIR = "${WORKSPACE}"
+    }
+    
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/Bruno4Mrus/jenkins_practise.git',
+                    credentialsId: 'github-credentials'
+            }
+        }
+        
+        stage('Build and Deploy') {
+            steps {
+                dir(DOCKER_COMPOSE_DIR) {
+                    sh 'docker compose down || true'
+                    sh 'docker compose up --build -d'
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                sleep time: 30, unit: 'SECONDS'
+                script {
+                    try {
+                        sh 'curl -f http://localhost:8080/dog/history || exit 1'
+                    } catch (Exception e) {
+                        echo "Application health check failed: ${e.message}"
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Deployment completed successfully!'
+            echo 'Application available at: http://localhost:8080'
+        }
+        failure {
+            echo 'Deployment failed!'
+        }
+    }
+}
